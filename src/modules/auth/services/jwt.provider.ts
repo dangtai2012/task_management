@@ -32,13 +32,6 @@ export class JwtProvider {
   }
   //#endregion
 
-  // //#region generateToken
-  // async generateToken(user: UserEntity, expiresIn: number) {
-  //   const token = await this.signToken(user.id, expiresIn);
-  //   return token;
-  // }
-  // //#endregion
-
   //#region generateATAndRT
   async generateATAndRT(user: UserEntity) {
     const [accessToken, refreshToken] = await Promise.all([

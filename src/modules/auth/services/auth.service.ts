@@ -1,10 +1,9 @@
 import {
   BadRequestException,
-  Inject,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-  RequestTimeoutException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -80,11 +79,11 @@ export class AuthService {
     const token = await this.jwtProvider.signToken(newUser.id, 300);
 
     // Send email verify
-    const url = `http://localhost:3000/auth/confirm?token=${token}`;
+    const url = `http://localhost:3000/api/auth/confirm?token=${token}`;
     const subject = 'Account Verification';
     await this.mailProvider.sendEmail(url, newUser.email, subject, token);
 
-    return newUser;
+    return { message: 'Sign up success', data: newUser };
   }
   //#endregion
 
@@ -105,8 +104,6 @@ export class AuthService {
 
       user.is_active = true;
       await this.userRepo.save(user);
-
-      return { message: 'Email confirmed successfully' };
     } catch (error) {
       if (error instanceof TokenExpiredError) {
         const payload = await this.jwtService.decode(token);
@@ -127,6 +124,8 @@ export class AuthService {
 
       throw new UnauthorizedException('Invalid token.');
     }
+
+    return { message: 'Email confirmed success' };
   }
   //#endregion
 
@@ -135,8 +134,11 @@ export class AuthService {
   async signIn(signInRequest: SignInRequest) {
     // Find the user using email ID
     // Throw an exception user not found
-    const user = await this.userRepo.findOneBy({
-      email: signInRequest.email,
+    const user = await this.userRepo.findOne({
+      where: {
+        email: signInRequest.email,
+      },
+      select: ['id', 'email', 'role', 'password'],
     });
 
     if (!user) {
@@ -167,7 +169,7 @@ export class AuthService {
       user_id: user,
     });
 
-    return tokens;
+    return { message: 'Sign in success', data: tokens };
   }
   //#endregion
 
@@ -180,17 +182,24 @@ export class AuthService {
         refreshTokenRequest.refreshToken,
       );
 
-      // Fetch user from the database
-      const user = await this.userRepo.findOneBy({
-        id: sub,
-        is_active: true,
-      });
+      // Fetch user and session from the database
+      const [user, session] = await Promise.all([
+        this.userRepo.findOneBy({ id: sub, is_active: true }),
+        this.sessionRepo.findOne({
+          where: { refresh_token: refreshTokenRequest.refreshToken },
+        }),
+      ]);
+
+      // Check session
+      if (!session || !!session.logout_at) {
+        throw new ConflictException('Failed to update refresh session');
+      }
 
       // Generate the tokens
       const tokens = await this.jwtProvider.generateATAndRT(user);
 
       // Update session
-      await this.sessionRepo.update(
+      const refreshSession = await this.sessionRepo.update(
         {
           refresh_token: refreshTokenRequest.refreshToken,
         },
@@ -200,7 +209,11 @@ export class AuthService {
         },
       );
 
-      return tokens;
+      if (!refreshSession.affected) {
+        throw new ConflictException('Failed to update refresh session');
+      }
+
+      return { message: 'Refresh token success', data: tokens };
     } catch (error) {
       throw new UnauthorizedException(error);
     }
@@ -214,9 +227,12 @@ export class AuthService {
     current: ICurrentUser,
   ) {
     // Find the user
-    const user = await this.userRepo.findOneBy({
-      id: current.sub,
-      is_active: true,
+    const user = await this.userRepo.findOne({
+      where: {
+        id: current.sub,
+        is_active: true,
+      },
+      select: ['id', 'password'],
     });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -233,14 +249,11 @@ export class AuthService {
     }
 
     // Change user's password
-    await this.userRepo.save(
-      this.userRepo.create({
-        ...user,
-        password: await hashPassword(changePasswordRequest.newPassword),
-      }),
-    );
+    await this.userRepo.update(user.id, {
+      password: await hashPassword(changePasswordRequest.newPassword),
+    });
 
-    return { message: 'Change password successfully' };
+    return { message: 'Change password success' };
   }
   //#endregion
 
@@ -271,7 +284,7 @@ export class AuthService {
     );
 
     // Send email password_reset
-    const url = `http://localhost:3000/auth/reset-password?token=${token}`;
+    const url = `http://localhost:3000/api/auth/reset-password?token=${token}`;
     const subject = 'Password Reset';
     await this.mailProvider.sendEmail(url, email, subject, token);
 
@@ -307,16 +320,13 @@ export class AuthService {
       throw new InternalServerErrorException();
     }
 
-    await this.userRepo.save(
-      this.userRepo.create({
-        ...user,
-        password: await hashPassword(resetPasswordRequest.newPassword),
-      }),
-    );
+    await this.userRepo.update(user.id, {
+      password: await hashPassword(resetPasswordRequest.newPassword),
+    });
 
     await this.passwordResetRepo.delete({ id: token.id });
 
-    return { message: 'Reset password successfully' };
+    return { message: 'Reset password success' };
   }
   //#endregion
 
@@ -326,6 +336,8 @@ export class AuthService {
     await this.sessionRepo.update(session.id, {
       logout_at: new Date(),
     });
+
+    return { message: 'Log out success' };
   }
   //#endregion
 

@@ -1,14 +1,17 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
   Req,
-  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './services/auth.service';
 import {
@@ -23,6 +26,7 @@ import { AUTH_TYPE_ENUM, ROLE_ENUM } from 'src/constants';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ICurrentUser } from './interfaces';
 import { Role } from './decorators/role.decorator';
+import { AuthResponseInterceptor } from './response/auth-response.interceptor';
 
 @Controller('auth')
 export class AuthController {

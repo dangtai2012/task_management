@@ -2,6 +2,11 @@ import { Global, Module } from '@nestjs/common';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DbsConfig } from 'src/config';
 import { join } from 'path';
+import {
+  PasswordResetEntity,
+  SessionEntity,
+  UserEntity,
+} from 'src/dbs/entities';
 
 @Global()
 @Module({
@@ -20,6 +25,10 @@ import { join } from 'path';
         entities: [join(__dirname, '../../dbs/entities/**/*.entity{.ts,.js}')],
       }),
     }),
+
+    TypeOrmModule.forFeature([UserEntity, SessionEntity, PasswordResetEntity]),
   ],
+
+  exports: [TypeOrmModule],
 })
 export class DbsModule {}

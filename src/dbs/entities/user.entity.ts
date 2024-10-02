@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { SessionEntity } from './session.entity';
 import { PasswordResetEntity } from './password-reset.entity';
+import { Exclude } from 'class-transformer';
 @Entity('users')
 export class UserEntity {
   //#region COLUMNS
@@ -30,7 +31,12 @@ export class UserEntity {
   })
   email!: string;
 
-  @Column('varchar', { name: 'password', length: 96, nullable: false })
+  @Column('varchar', {
+    name: 'password',
+    length: 96,
+    nullable: false,
+    select: false,
+  })
   password!: string;
 
   @Column('varchar', { name: 'role', default: ROLE_ENUM.USER })

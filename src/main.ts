@@ -14,6 +14,8 @@ async function bootstrap() {
 
   //#region Config
 
+  app.setGlobalPrefix('api');
+
   app.useBodyParser('json', { limit: '50mb' });
   app.useBodyParser('urlencoded', { extended: true, limit: '50mb' });
 
