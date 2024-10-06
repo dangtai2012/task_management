@@ -8,7 +8,6 @@ import { DbsModule } from './system';
 
 @Module({
   imports: [ConfigModule, DbsModule, ...modules],
-  controllers: [],
   providers: [
     {
       provide: APP_GUARD,

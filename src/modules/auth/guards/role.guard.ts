@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ROLE_KEY } from 'src/constants';
+import { CURRENT_USER, ROLE_KEY } from 'src/constants';
 
 @Injectable()
 export class RoleGuard implements CanActivate {
@@ -22,7 +22,7 @@ export class RoleGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const user = request[CURRENT_USER];
 
     if (user && user.role) {
       const hasRequiredRole = roles.some((role: string) => user.role === role);

@@ -11,6 +11,8 @@ import {
 import { SessionEntity } from './session.entity';
 import { PasswordResetEntity } from './password-reset.entity';
 import { Exclude } from 'class-transformer';
+import { CategoriesEntity } from './categories.enitity';
+import { TaskEntity } from './tasks.entity';
 @Entity('users')
 export class UserEntity {
   //#region COLUMNS
@@ -61,9 +63,21 @@ export class UserEntity {
 
   @OneToMany(
     () => PasswordResetEntity,
-    (password_resets) => password_resets.user_id,
+    (password_resets) => password_resets.user_of_password_reset,
   )
   password_resets: PasswordResetEntity[];
+
+  @OneToMany(
+    () => CategoriesEntity,
+    (categories) => categories.user_of_category,
+  )
+  category_of_user: CategoriesEntity[];
+
+  @OneToMany(() => TaskEntity, (task) => task.creator)
+  task_of_creator: TaskEntity[];
+
+  @OneToMany(() => TaskEntity, (task) => task.user_of_task)
+  task_of_user: TaskEntity[];
   //#endregion
 
   //#region OTHERS

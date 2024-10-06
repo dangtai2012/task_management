@@ -28,7 +28,7 @@ export class SessionEntity {
   //#endregion
 
   //#region RELATIONS
-  @ManyToOne(() => UserEntity, (user) => user.id, {
+  @ManyToOne(() => UserEntity, (user) => user.sessions, {
     onDelete: 'CASCADE',
     orphanedRowAction: 'delete',
   })

@@ -1,10 +1,6 @@
-import { IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, IsArray } from 'class-validator';
 
 export class SearchSortPaginationRequest {
-  @IsOptional()
-  @IsString()
-  keyword?: string;
-
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -14,6 +10,15 @@ export class SearchSortPaginationRequest {
   @IsNumber()
   @Min(1)
   size?: number = 10;
+
+  @IsOptional()
+  @IsString()
+  keyword?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  searchField?: string[];
 
   @IsOptional()
   sortField?: string;

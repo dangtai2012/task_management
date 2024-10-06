@@ -1,17 +1,13 @@
 import {
   Body,
   Controller,
-  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  ParseIntPipe,
   Post,
   Put,
   Query,
   Req,
-  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './services/auth.service';
 import {
@@ -22,11 +18,12 @@ import {
   SignUpRequest,
 } from './requests';
 import { Auth } from './decorators/auth.decorator';
-import { AUTH_TYPE_ENUM, ROLE_ENUM } from 'src/constants';
+import { AUTH_TYPE_ENUM, CURRENT_USER, ROLE_ENUM } from 'src/constants';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ICurrentUser } from './interfaces';
-import { Role } from './decorators/role.decorator';
-import { AuthResponseInterceptor } from './response/auth-response.interceptor';
+import { Request } from 'express';
+import { AuthResponse } from './response/auth.response';
+import { DataResponse } from 'src/system/response';
 
 @Controller('auth')
 export class AuthController {
@@ -43,9 +40,14 @@ export class AuthController {
   @Post('sign-up')
   @HttpCode(HttpStatus.CREATED)
   @Auth(AUTH_TYPE_ENUM.None)
-  async signUp(@Body() signUpRequest: SignUpRequest) {
-    const result = await this.authService.signUp(signUpRequest);
-    return result;
+  async signUp(@Body() signUpRequest: SignUpRequest, @Req() req: Request) {
+    const newUser = await this.authService.signUp(
+      signUpRequest,
+      req.protocol,
+      req.headers,
+    );
+
+    return new AuthResponse('Sign up success', newUser);
   }
   //#endregion
 
@@ -65,7 +67,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Auth(AUTH_TYPE_ENUM.None)
   async signIn(@Body() signInRequest: SignInRequest) {
-    return this.authService.signIn(signInRequest);
+    const tokens = await this.authService.signIn(signInRequest);
+
+    return new DataResponse('Sign in success', tokens);
   }
   //#endregion
 
@@ -75,7 +79,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Auth(AUTH_TYPE_ENUM.None)
   async refreshToken(@Body() refreshTokenRequest: RefreshTokenRequest) {
-    return this.authService.refreshTokens(refreshTokenRequest);
+    const tokens = await this.authService.refreshTokens(refreshTokenRequest);
+    return new DataResponse('Refresh token success', tokens);
   }
   //#endregion
 
@@ -97,8 +102,8 @@ export class AuthController {
   //: forgotPassword
   @Post('forgot-password')
   @Auth(AUTH_TYPE_ENUM.None)
-  async forgotPassword(@Body('email') email: string) {
-    return this.authService.forgotPassword(email);
+  async forgotPassword(@Body('email') email: string, @Req() req: Request) {
+    return this.authService.forgotPassword(email, req.protocol, req.headers);
   }
   //#endregion
 
@@ -121,6 +126,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logOut(@Req() req: any) {
     return this.authService.logOut(req.session);
+  }
+  //#endregion
+
+  //#region getMe
+  //: logOut
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  async getMe(@Req() req: any) {
+    const profileOfCurUser = await this.authService.getMe(req[CURRENT_USER]);
+    return new AuthResponse('Get me success', profileOfCurUser);
   }
   //#endregion
 

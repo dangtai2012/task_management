@@ -42,6 +42,12 @@ export class AccessTokenGuard implements CanActivate {
 
       const payload = await this.jwtProvider.verify(token);
 
+      const user = await this.authService.getActive(payload.sub);
+
+      if (user.is_active === false) {
+        throw new UnauthorizedException('Your account has been locked');
+      }
+
       request[CURRENT_USER] = payload;
       request[CURRENT_SESSION] = session;
     } catch (error) {

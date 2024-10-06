@@ -22,6 +22,7 @@ import {
 } from '../requests';
 import { ICurrentUser } from '../interfaces';
 import { PasswordResetEntity } from 'src/dbs/entities/password-reset.entity';
+import { IncomingHttpHeaders } from 'http';
 
 @Injectable()
 export class AuthService {
@@ -53,7 +54,11 @@ export class AuthService {
 
   //#region signUp
   //: signUp
-  async signUp(signUpRequest: SignUpRequest) {
+  async signUp(
+    signUpRequest: SignUpRequest,
+    protocol: string,
+    headers: IncomingHttpHeaders,
+  ) {
     // Check if user exists
     if (
       await this.userRepo.exists({
@@ -79,11 +84,18 @@ export class AuthService {
     const token = await this.jwtProvider.signToken(newUser.id, 300);
 
     // Send email verify
-    const url = `http://localhost:3000/api/auth/confirm?token=${token}`;
+    //const url = `http://localhost:3000/api/auth/confirm?token=${token}`;
+    const baseURL = protocol + '://' + headers.host + '/';
+    const newURL = new URL(`api/auth/confirm?token=${token}`, baseURL);
     const subject = 'Account Verification';
-    await this.mailProvider.sendEmail(url, newUser.email, subject, token);
+    await this.mailProvider.sendEmail(
+      newURL.href,
+      newUser.email,
+      subject,
+      token,
+    );
 
-    return { message: 'Sign up success', data: newUser };
+    return newUser;
   }
   //#endregion
 
@@ -125,7 +137,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid token.');
     }
 
-    return { message: 'Email confirmed success' };
+    return { status: 'success', message: 'Email confirmed success' };
   }
   //#endregion
 
@@ -133,14 +145,14 @@ export class AuthService {
   //: signIn
   async signIn(signInRequest: SignInRequest) {
     // Find the user using email ID
-    // Throw an exception user not found
     const user = await this.userRepo.findOne({
       where: {
         email: signInRequest.email,
       },
-      select: ['id', 'email', 'role', 'password'],
+      select: ['id', 'email', 'role', 'password', 'is_active'],
     });
 
+    // Throw an exception user not found
     if (!user) {
       throw new UnauthorizedException('Account does not exist');
     }
@@ -169,7 +181,7 @@ export class AuthService {
       user_id: user,
     });
 
-    return { message: 'Sign in success', data: tokens };
+    return tokens;
   }
   //#endregion
 
@@ -189,6 +201,11 @@ export class AuthService {
           where: { refresh_token: refreshTokenRequest.refreshToken },
         }),
       ]);
+
+      // Check user
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
 
       // Check session
       if (!session || !!session.logout_at) {
@@ -213,9 +230,9 @@ export class AuthService {
         throw new ConflictException('Failed to update refresh session');
       }
 
-      return { message: 'Refresh token success', data: tokens };
+      return tokens;
     } catch (error) {
-      throw new UnauthorizedException(error);
+      throw error;
     }
   }
   //#endregion
@@ -253,13 +270,17 @@ export class AuthService {
       password: await hashPassword(changePasswordRequest.newPassword),
     });
 
-    return { message: 'Change password success' };
+    return { status: 'success', message: 'Change password success' };
   }
   //#endregion
 
   //#region forgotPassword
   //: forgotPassword
-  async forgotPassword(email: string) {
+  async forgotPassword(
+    email: string,
+    protocol: string,
+    headers: IncomingHttpHeaders,
+  ) {
     // Check if user exists
     const user = await this.userRepo.findOneBy({
       email: email,
@@ -279,16 +300,18 @@ export class AuthService {
       this.passwordResetRepo.create({
         token: token,
         expires_at: expiresAt,
-        user_id: user,
+        user_id: user.id,
       }),
     );
 
     // Send email password_reset
-    const url = `http://localhost:3000/api/auth/reset-password?token=${token}`;
+    //const url = `http://localhost:3000/api/auth/reset-password?token=${token}`;
+    const baseURL = protocol + '://' + headers.host + '/';
+    const newURL = new URL(`api/auth/reset-password?token=${token}`, baseURL);
     const subject = 'Password Reset';
-    await this.mailProvider.sendEmail(url, email, subject, token);
+    await this.mailProvider.sendEmail(newURL.href, email, subject, token);
 
-    return { message: 'Reset password email sent' };
+    return { status: 'success', message: 'Reset password email sent' };
   }
   //#endregion
 
@@ -312,12 +335,12 @@ export class AuthService {
 
     // Change user's password
     const user = await this.userRepo.findOneBy({
-      password_resets: token.user_id,
+      id: token.user_id,
       is_active: true,
     });
 
     if (!user) {
-      throw new InternalServerErrorException();
+      throw new NotFoundException('User not found');
     }
 
     await this.userRepo.update(user.id, {
@@ -326,7 +349,7 @@ export class AuthService {
 
     await this.passwordResetRepo.delete({ id: token.id });
 
-    return { message: 'Reset password success' };
+    return { status: 'success', message: 'Reset password success' };
   }
   //#endregion
 
@@ -337,13 +360,30 @@ export class AuthService {
       logout_at: new Date(),
     });
 
-    return { message: 'Log out success' };
+    return { status: 'success', message: 'Log out success' };
+  }
+  //#endregion
+
+  //#region getMe
+  //: getMe
+  async getMe(curUser: any) {
+    const user = this.userRepo.findOne({
+      where: {
+        id: curUser.sub,
+      },
+    });
+
+    return user;
   }
   //#endregion
 
   //#region Others
   getSessionByToken(accessToken: string) {
     return this.sessionRepo.findOne({ where: { access_token: accessToken } });
+  }
+
+  getActive(sub: string) {
+    return this.userRepo.findOne({ where: { id: sub } });
   }
   //#endregion
 }

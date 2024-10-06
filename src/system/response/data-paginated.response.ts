@@ -1,33 +1,47 @@
 import { DataResponse } from './data.response';
 
-interface IMeta {
+// interface IMeta {
+//   itemsPerPage: number;
+//   totalItems: number;
+//   currentPage: number;
+//   totalPages: number;
+// }
+
+export class PaginateMeta {
   itemsPerPage: number;
   totalItems: number;
   currentPage: number;
   totalPages: number;
-}
 
-interface ILinks {
-  first: string;
-  last: string;
-  current: string;
-  next: string | null;
-  previous: string | null;
+  constructor(
+    itemsPerPage: number,
+    totalItems: number,
+    currentPage: number,
+    totalPages: number,
+  ) {
+    this.itemsPerPage = itemsPerPage;
+    this.totalItems = totalItems;
+    this.currentPage = currentPage;
+    this.totalPages = totalPages;
+  }
 }
 
 export class DataPaginatedResponse<T> extends DataResponse<T[]> {
-  meta: IMeta;
-  links: ILinks;
+  meta: PaginateMeta;
 
   constructor(
     data: T[],
-    meta: IMeta,
-    links: ILinks,
+    total: number,
+    page: number,
+    size: number,
     message: string = '',
-    status: string = 'success',
   ) {
-    super(data, message, status);
-    this.meta = meta;
-    this.links = links;
+    super(message, data);
+    this.meta = new PaginateMeta(
+      (size = data.length !== 0 ? size : 0),
+      total,
+      page,
+      size !== 0 ? Math.ceil(total / size) : 1,
+    );
   }
 }

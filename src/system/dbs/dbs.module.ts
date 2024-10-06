@@ -7,6 +7,8 @@ import {
   SessionEntity,
   UserEntity,
 } from 'src/dbs/entities';
+import { CategoriesEntity } from 'src/dbs/entities/categories.enitity';
+import { TaskEntity } from 'src/dbs/entities/tasks.entity';
 
 @Global()
 @Module({
@@ -26,7 +28,13 @@ import {
       }),
     }),
 
-    TypeOrmModule.forFeature([UserEntity, SessionEntity, PasswordResetEntity]),
+    TypeOrmModule.forFeature([
+      UserEntity,
+      SessionEntity,
+      PasswordResetEntity,
+      CategoriesEntity,
+      TaskEntity,
+    ]),
   ],
 
   exports: [TypeOrmModule],

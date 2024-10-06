@@ -1,4 +1,17 @@
 import { Brackets, SelectQueryBuilder } from 'typeorm';
+import { Slugify } from '../utils/slugify';
+
+export function applyFilter<T>(
+  query: SelectQueryBuilder<T>,
+  keyword: string,
+  filterField: string,
+): SelectQueryBuilder<T> {
+  if (keyword && filterField) {
+    query.andWhere(`${filterField} = :keyword`, { keyword });
+  }
+
+  return query;
+}
 
 export function applySearch<T>(
   query: SelectQueryBuilder<T>,
@@ -6,7 +19,7 @@ export function applySearch<T>(
   searchFields: string[],
 ): SelectQueryBuilder<T> {
   if (keyword && searchFields.length > 0) {
-    const keywordQuery = `%${keyword}%`;
+    const keywordQuery = `%${Slugify(keyword, { lower: true, trim: true })}%`;
 
     query.andWhere(
       new Brackets((queryBuilder) => {

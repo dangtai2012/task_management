@@ -17,6 +17,9 @@ export class PasswordResetEntity {
   @Column('varchar', { name: 'token', nullable: false })
   token!: string;
 
+  @Column('varchar', { name: 'user_id', nullable: false })
+  user_id!: string;
+
   @Column({ name: 'expires_at', type: 'timestamp' })
   expires_at!: Date;
 
@@ -25,11 +28,11 @@ export class PasswordResetEntity {
   //#endregion
 
   //#region RELATIONS
-  @ManyToOne(() => UserEntity, (user) => user.id, {
+  @ManyToOne(() => UserEntity, (user) => user.password_resets, {
     onDelete: 'CASCADE',
     orphanedRowAction: 'delete',
   })
   @JoinColumn({ name: 'user_id' })
-  user_id!: UserEntity;
+  user_of_password_reset: UserEntity;
   //#endregion
 }
